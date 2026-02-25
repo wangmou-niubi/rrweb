@@ -42,7 +42,7 @@ function minifyAndUMDPlugin({
             '',
           );
           const outputFilePath = resolve(outputOptions.dir!, baseFileName);
-          
+
           if (isCSS) {
             await buildFile({
               input: inputFilePath,
@@ -53,11 +53,14 @@ function minifyAndUMDPlugin({
             });
           } else {
             // Create UMD versions from the .cjs file
-            const umdDir = dirname(outputFilePath).replace(/[\/\\]dist[\/\\]?/, `${path.sep}umd${path.sep}`);
+            const umdDir = dirname(outputFilePath).replace(
+              /[\/\\]dist[\/\\]?/,
+              `${path.sep}umd${path.sep}`,
+            );
             if (!existsSync(umdDir)) {
               mkdirSync(umdDir, { recursive: true });
             }
-            
+
             // Generate .umd.cjs file
             const outUmd = `${outputFilePath}.umd.cjs`;
             await buildFile({
@@ -68,12 +71,16 @@ function minifyAndUMDPlugin({
               isCss: false,
               outDir,
             });
-            
+
             // Copy to umd directory with .js extension
             // Use path.sep for cross-platform compatibility
-            const umdJsPath = outputFilePath.replace(new RegExp(`[\/\\\\]dist[\/\\\\]`), `${path.sep}umd${path.sep}`) + '.js';
+            const umdJsPath =
+              outputFilePath.replace(
+                new RegExp(`[\/\\\\]dist[\/\\\\]`),
+                `${path.sep}umd${path.sep}`,
+              ) + '.js';
             copyFileSync(outUmd, umdJsPath);
-            
+
             // Generate minified .umd.min.cjs file
             const outUmdMin = `${outputFilePath}.umd.min.cjs`;
             await buildFile({
@@ -84,9 +91,13 @@ function minifyAndUMDPlugin({
               isCss: false,
               outDir,
             });
-            
+
             // Copy to umd directory with .min.js extension
-            const umdMinJsPath = outputFilePath.replace(new RegExp(`[\/\\\\]dist[\/\\\\]`), `${path.sep}umd${path.sep}`) + '.min.js';
+            const umdMinJsPath =
+              outputFilePath.replace(
+                new RegExp(`[\/\\\\]dist[\/\\\\]`),
+                `${path.sep}umd${path.sep}`,
+              ) + '.min.js';
             copyFileSync(outUmdMin, umdMinJsPath);
           }
         }

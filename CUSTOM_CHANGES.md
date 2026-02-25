@@ -8,6 +8,7 @@
 
 **问题描述：**
 在 Windows 系统上运行 `yarn build:all` 时，`rrweb-snapshot` 包构建失败，报错：
+
 ```
 "default" is not exported by "../utils/dist/utils.js"
 ```
@@ -16,15 +17,18 @@
 `vite.config.default.ts` 中的 `minifyAndUMDPlugin` 插件在处理路径时使用了硬编码的 Unix 风格路径分隔符 `/`，导致在 Windows 系统（使用 `\` 作为路径分隔符）上路径替换失败。结果 UMD 格式的文件覆盖了 ES 模块格式的 `utils.js` 文件。
 
 **修复方案：**
+
 1. 修改 `vite.config.default.ts` 中的路径处理逻辑
 2. 使用正则表达式 `/[\/\\]dist[\/\\]/` 匹配两种路径分隔符
 3. 使用 `path.sep` 生成正确的平台特定路径分隔符
 4. 添加 `recursive: true` 选项确保目录创建成功
 
 **修改文件：**
+
 - `vite.config.default.ts`
 
 **影响范围：**
+
 - 修复了跨平台构建兼容性问题
 - 确保 ES 模块文件不会被 UMD 文件覆盖
 - UMD 文件现在正确地放在 `umd` 目录中
@@ -52,6 +56,7 @@ yarn workspace rrweb-snapshot build
 ## 维护说明
 
 本仓库将持续维护和更新，包括：
+
 - 修复跨平台兼容性问题
 - 添加新功能
 - 性能优化
