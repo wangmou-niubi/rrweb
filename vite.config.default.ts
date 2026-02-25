@@ -3,9 +3,8 @@ import dts from 'vite-plugin-dts';
 import { copyFileSync, mkdirSync, existsSync } from 'node:fs';
 import { defineConfig, LibraryOptions, LibraryFormats, Plugin } from 'vite';
 import { build, Format } from 'esbuild';
-import { resolve, dirname } from 'path';
+import { resolve, dirname, sep } from 'path';
 import { umdWrapper } from 'esbuild-plugin-umd-wrapper';
-import * as fs from 'node:fs';
 import { visualizer } from 'rollup-plugin-visualizer';
 
 // don't empty out dir if --watch flag is passed
@@ -26,6 +25,8 @@ function minifyAndUMDPlugin({
   return {
     name: 'minify-plugin',
     async writeBundle(outputOptions, bundle) {
+      if (!outputOptions.dir) return;
+      
       for (const file of Object.values(bundle)) {
         if (
           file.type === 'asset' &&
@@ -33,14 +34,14 @@ function minifyAndUMDPlugin({
         ) {
           const isCSS = file.fileName.endsWith('.css');
           const inputFilePath = resolve(
-            outputOptions.dir!,
+            outputOptions.dir,
             file.fileName,
           ).replace(/\.map$/, '');
           const baseFileName = file.fileName.replace(
             /(\.cjs|\.css)(\.map)?$/,
             '',
           );
-          const outputFilePath = resolve(outputOptions.dir!, baseFileName);
+          const outputFilePath = resolve(outputOptions.dir, baseFileName);
           // console.log(outputFilePath, 'minifying', file.fileName);
           if (isCSS) {
             await buildFile({
@@ -51,10 +52,7 @@ function minifyAndUMDPlugin({
               outDir,
             });
           } else {
-            const umdDir = dirname(outputFilePath).replace(
-              /[\/\\]dist[\/\\]?/,
-              `${path.sep}umd${path.sep}`,
-            );
+            const umdDir = dirname(outputFilePath).replace(/[\\/]dist[\\/]?/, `${sep}umd${sep}`);
             if (!existsSync(umdDir)) {
               mkdirSync(umdDir, { recursive: true });
             }
@@ -71,10 +69,7 @@ function minifyAndUMDPlugin({
             // More info: https://github.com/jsdelivr/jsdelivr/issues/18584 https://github.com/rrweb-io/rrweb/pull/1704
             copyFileSync(
               outUmd,
-              `${outputFilePath.replace(
-                new RegExp(`[\/\\\\]dist[\/\\\\]`),
-                `${path.sep}umd${path.sep}`,
-              )}.js`,
+              `${outputFilePath.replace(new RegExp(`[\\\\/]dist[\\\\/]`), `${sep}umd${sep}`)}.js`,
             );
             const outUmdMin = `${outputFilePath}.umd.min.cjs`;
             await buildFile({
@@ -87,10 +82,7 @@ function minifyAndUMDPlugin({
             });
             copyFileSync(
               outUmdMin,
-              `${outputFilePath.replace(
-                new RegExp(`[\/\\\\]dist[\/\\\\]`),
-                `${path.sep}umd${path.sep}`,
-              )}.min.js`,
+              `${outputFilePath.replace(new RegExp(`[\\\\/]dist[\\\\/]`), `${sep}umd${sep}`)}.min.js`,
             );
           }
         }
@@ -140,7 +132,7 @@ export default function (
 ) {
   const { fileName, outputDir: outDir = 'dist', plugins = [] } = options || {};
 
-  let formats: LibraryFormats[] = ['es', 'cjs'];
+  const formats: LibraryFormats[] = ['es', 'cjs'];
 
   return defineConfig(() => ({
     build: {
