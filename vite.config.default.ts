@@ -26,7 +26,7 @@ function minifyAndUMDPlugin({
     name: 'minify-plugin',
     async writeBundle(outputOptions, bundle) {
       if (!outputOptions.dir) return;
-      
+
       for (const file of Object.values(bundle)) {
         if (
           file.type === 'asset' &&
@@ -52,7 +52,10 @@ function minifyAndUMDPlugin({
               outDir,
             });
           } else {
-            const umdDir = dirname(outputFilePath).replace(/[\\/]dist[\\/]?/, `${sep}umd${sep}`);
+            const umdDir = dirname(outputFilePath).replace(
+              /[\\/]dist[\\/]?/,
+              `${sep}umd${sep}`,
+            );
             if (!existsSync(umdDir)) {
               mkdirSync(umdDir, { recursive: true });
             }
@@ -69,7 +72,10 @@ function minifyAndUMDPlugin({
             // More info: https://github.com/jsdelivr/jsdelivr/issues/18584 https://github.com/rrweb-io/rrweb/pull/1704
             copyFileSync(
               outUmd,
-              `${outputFilePath.replace(new RegExp(`[\\\\/]dist[\\\\/]`), `${sep}umd${sep}`)}.js`,
+              `${outputFilePath.replace(
+                new RegExp(`[\\\\/]dist[\\\\/]`),
+                `${sep}umd${sep}`,
+              )}.js`,
             );
             const outUmdMin = `${outputFilePath}.umd.min.cjs`;
             await buildFile({
@@ -82,7 +88,10 @@ function minifyAndUMDPlugin({
             });
             copyFileSync(
               outUmdMin,
-              `${outputFilePath.replace(new RegExp(`[\\\\/]dist[\\\\/]`), `${sep}umd${sep}`)}.min.js`,
+              `${outputFilePath.replace(
+                new RegExp(`[\\\\/]dist[\\\\/]`),
+                `${sep}umd${sep}`,
+              )}.min.js`,
             );
           }
         }
@@ -120,12 +129,12 @@ async function buildFile({
       }),
     ],
   });
-  
+
   // Post-process UMD file to expose default export directly
   if (!isCss && name) {
     const fs = await import('fs');
     let content = fs.readFileSync(output, 'utf-8');
-    
+
     // Replace the final return statement to unwrap default export
     // This ensures that when using UMD (e.g., via <script> tag),
     // the global variable is the constructor itself, not an object with a default property
@@ -145,12 +154,12 @@ if (module.exports && module.exports.default) {
   return _default;
 }
 return module.exports;
-}))`
+}))`,
     );
-    
+
     fs.writeFileSync(output, content, 'utf-8');
   }
-  
+
   const filename = output.replace(new RegExp(`^.+/(${outDir}/)`), '$1');
   console.log(filename);
   console.log(`${filename}.map`);

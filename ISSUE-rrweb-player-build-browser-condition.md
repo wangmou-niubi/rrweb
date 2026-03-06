@@ -15,6 +15,7 @@ This tends to show up when building on **Windows**; the official npm package is 
 ## Root cause
 
 1. **Svelte’s `package.json`** exposes the main entry with conditions like:
+
    ```json
    {
      "browser": { "default": "./src/runtime/index.js" },
@@ -25,6 +26,7 @@ This tends to show up when building on **Windows**; the official npm package is 
 2. **Vite (library build)** does not add `browser` to `resolve.conditions`, so Node’s conditional exports resolution picks the `default` branch → **`ssr.js`**.
 
 3. In the **SSR runtime**, `onMount` is a no-op:
+
    ```js
    export function onMount() {}
    ```
@@ -43,11 +45,11 @@ This tends to show up when building on **Windows**; the official npm package is 
 
 ## Expected vs actual
 
-| | Expected | Actual (broken build) |
-|---|---|---|
-| Bundle size | ~483 kB | ~295 kB |
-| `onMount` / Replayer init | Present | Tree-shaken out |
-| Runtime behavior | Replay works | Empty shell, no playback |
+|                           | Expected     | Actual (broken build)    |
+| ------------------------- | ------------ | ------------------------ |
+| Bundle size               | ~483 kB      | ~295 kB                  |
+| `onMount` / Replayer init | Present      | Tree-shaken out          |
+| Runtime behavior          | Replay works | Empty shell, no playback |
 
 ## Proposed fix
 
@@ -55,7 +57,8 @@ In `packages/rrweb-player/vite.config.ts`, ensure the `browser` condition is use
 
 ```ts
 export default defineConfig((env) => {
-  const resolved = typeof baseConfig === 'function' ? baseConfig(env) : baseConfig;
+  const resolved =
+    typeof baseConfig === 'function' ? baseConfig(env) : baseConfig;
   return {
     ...resolved,
     resolve: {

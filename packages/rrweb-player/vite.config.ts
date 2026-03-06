@@ -62,20 +62,25 @@ function viteSvelteDts(): Plugin {
 
 import { defineConfig } from 'vite';
 
-const baseConfig = config(path.resolve(__dirname, 'src/main.ts'), 'rrwebPlayer', {
-  plugins: [
-    viteSvelteDts(),
-    svelte({
-      preprocess: [sveltePreprocess({ typescript: true })],
-    }),
-  ],
-});
+const baseConfig = config(
+  path.resolve(__dirname, 'src/main.ts'),
+  'rrwebPlayer',
+  {
+    plugins: [
+      viteSvelteDts(),
+      svelte({
+        preprocess: [sveltePreprocess({ typescript: true })],
+      }),
+    ],
+  },
+);
 
 // Vite library mode doesn't include 'browser' in resolve.conditions by default,
 // which causes Svelte to resolve to its SSR runtime (where onMount is a noop).
 // This results in onMount callbacks being tree-shaken away during bundling.
 export default defineConfig((env) => {
-  const resolved = typeof baseConfig === 'function' ? baseConfig(env) : baseConfig;
+  const resolved =
+    typeof baseConfig === 'function' ? baseConfig(env) : baseConfig;
   return {
     ...resolved,
     resolve: {
