@@ -79,6 +79,8 @@ new rrwebPlayer({
 | showController | true         | whether to show the controller UI                                                                                   |
 | tags           | {}           | customize the custom events style with a key-value map                                                              |
 | inactiveColor  | #D4D4D4      | Customize the color of inactive periods indicator in the progress bar with a valid CSS color string.                |
+| startTime      | undefined    | The start timestamp (in milliseconds) to display on the timeline in YYYY/MM/DD HH:mm:ss format. If not provided, will use the first event timestamp. |
+| endTime        | undefined    | The end timestamp (in milliseconds) to display on the timeline in YYYY/MM/DD HH:mm:ss format. If not provided, will use the last event timestamp. |
 | ...            | -            | all the [rrweb Replayer options](https://github.com/rrweb-io/rrweb/blob/master/guide.md#options-1) will be bypassed |
 
 ## methods on the rrwebPlayer component

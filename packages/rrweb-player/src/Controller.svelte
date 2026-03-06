@@ -12,8 +12,9 @@
     createEventDispatcher,
     afterUpdate,
   } from 'svelte';
-  import { formatTime, getInactivePeriods } from './utils';
+  import { formatTime, getInactivePeriods, formatDateTime } from './utils';
   import Switch from './components/Switch.svelte';
+  import type { KeyPointMarker, KeyPointStyle, TimeRange } from './types';
 
   const dispatch = createEventDispatcher();
 
@@ -25,6 +26,14 @@
   export let speed = speedOption.length ? speedOption[0] : 1;
   export let tags: Record<string, string> = {};
   export let inactiveColor: string;
+  export let startTime: number | undefined = undefined;
+  export let endTime: number | undefined = undefined;
+  export let keyPoints: KeyPointMarker[] = [];
+  export let keyPointStyles: Record<string, KeyPointStyle> = {};
+  export let onKeyPointClick: ((marker: KeyPointMarker) => void) | undefined = undefined;
+  export let showTimeRangeSelector = true;
+  export let timeRange: TimeRange | undefined = undefined;
+  export let onTimeRangeChange: ((range: TimeRange) => void) | undefined = undefined;
 
   let currentTime = 0;
   $: {
@@ -37,6 +46,7 @@
   }
   let speedState: 'normal' | 'skipping';
   let progress: HTMLElement;
+  let rangeBar: HTMLElement;
   let finished: boolean;
 
   let pauseAt: number | false = false;
@@ -46,7 +56,11 @@
     end: number;
   } | null = null;
 
-  let meta: playerMetaData;
+  let meta: playerMetaData = {
+    startTime: 0,
+    endTime: 0,
+    totalTime: 0,
+  } as playerMetaData;
   $: meta = replayer.getMetaData();
   let percentage: string;
   $: {
@@ -54,6 +68,97 @@
     percentage = `${100 * percent}%`;
     dispatch('ui-update-progress', { payload: percent });
   }
+  
+  // Calculate actual start and end timestamps
+  let actualStartTime: number;
+  let actualEndTime: number;
+  $: {
+    const { context } = replayer.service.state;
+    const totalEvents = context.events.length;
+    actualStartTime = startTime !== undefined ? startTime : context.events[0].timestamp;
+    actualEndTime = endTime !== undefined ? endTime : context.events[totalEvents - 1].timestamp;
+  }
+
+  // Time range selector state (0–1)
+  let rangeStartPercent = 0;
+  let rangeEndPercent = 1;
+  let draggingHandle: 'left' | 'right' | null = null;
+  let rangeEmitTimer: ReturnType<typeof setTimeout> | null = null;
+
+  $: sessionDuration = actualEndTime - actualStartTime;
+
+  $: rangeStartTs = percentToTimestamp(rangeStartPercent);
+  $: rangeEndTs = percentToTimestamp(rangeEndPercent);
+  $: rangeTimeText = `${formatDateTime(rangeStartTs)} - ${formatDateTime(rangeEndTs)}`;
+
+  // Sync range from timeRange prop when not dragging
+  $: if (showTimeRangeSelector && sessionDuration > 0 && timeRange !== undefined && draggingHandle === null) {
+    rangeStartPercent = Math.max(0, Math.min(1, (timeRange.startTime - actualStartTime) / sessionDuration));
+    rangeEndPercent = Math.max(0, Math.min(1, (timeRange.endTime - actualStartTime) / sessionDuration));
+    if (rangeStartPercent > rangeEndPercent) rangeEndPercent = rangeStartPercent;
+  }
+
+  function percentToTimestamp(p: number): number {
+    return actualStartTime + p * sessionDuration;
+  }
+
+  function emitTimeRangeChange() {
+    if (onTimeRangeChange && sessionDuration > 0) {
+      onTimeRangeChange({
+        startTime: percentToTimestamp(rangeStartPercent),
+        endTime: percentToTimestamp(rangeEndPercent),
+      });
+    }
+  }
+
+  function emitTimeRangeChangeThrottled() {
+    if (draggingHandle !== null) {
+      if (rangeEmitTimer === null) {
+        rangeEmitTimer = setTimeout(() => {
+          rangeEmitTimer = null;
+          emitTimeRangeChange();
+        }, 50);
+      }
+    } else {
+      emitTimeRangeChange();
+    }
+  }
+
+  function clampPercent(p: number): number {
+    return Math.max(0, Math.min(1, p));
+  }
+
+  function getPercentFromMouse(event: MouseEvent, bar?: HTMLElement): number {
+    const el = bar || progress;
+    if (!el) return 0;
+    const rect = el.getBoundingClientRect();
+    return clampPercent((event.clientX - rect.left) / rect.width);
+  }
+
+  function onRangeHandleMouseDown(which: 'left' | 'right', event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    draggingHandle = which;
+  }
+
+  function onRangeMouseMove(event: MouseEvent) {
+    if (draggingHandle === null || !rangeBar) return;
+    const p = getPercentFromMouse(event, rangeBar);
+    if (draggingHandle === 'left') {
+      rangeStartPercent = Math.min(p, rangeEndPercent);
+    } else {
+      rangeEndPercent = Math.max(p, rangeStartPercent);
+    }
+    emitTimeRangeChangeThrottled();
+  }
+
+  function onRangeMouseUp() {
+    if (draggingHandle !== null) {
+      draggingHandle = null;
+      emitTimeRangeChange();
+    }
+  }
+
   type CustomEvent = {
     name: string;
     background: string;
@@ -100,6 +205,51 @@
 
     return customEvents;
   })();
+
+  type KeyPointDisplay = {
+    marker: KeyPointMarker;
+    color: string;
+    icon: string | undefined;
+    position: string;
+    tooltip: string;
+  };
+
+  let hoveredKeyPoint: KeyPointDisplay | null = null;
+
+  let keyPointMarkers: KeyPointDisplay[];
+  $: keyPointMarkers = (() => {
+    if (!keyPoints || keyPoints.length === 0) return [];
+    const { context } = replayer.service.state;
+    const totalEvents = context.events.length;
+    const start = context.events[0].timestamp;
+    const end = context.events[totalEvents - 1].timestamp;
+
+    return keyPoints
+      .filter((kp) => kp.timestamp >= start && kp.timestamp <= end)
+      .map((kp) => {
+        const style = keyPointStyles[kp.type];
+        return {
+          marker: kp,
+          color: kp.color || style?.color || '#F44336',
+          icon: kp.icon || style?.icon,
+          position: `${position(start, end, kp.timestamp)}%`,
+          tooltip: kp.tooltip || kp.type,
+        };
+      });
+  })();
+
+  const handleKeyPointClick = (kpd: KeyPointDisplay, event: MouseEvent) => {
+    event.stopPropagation();
+    // Jump to the key point time
+    const { context } = replayer.service.state;
+    const start = context.events[0].timestamp;
+    const timeOffset = kpd.marker.timestamp - start;
+    goto(timeOffset);
+    // Call user callback
+    if (onKeyPointClick) {
+      onKeyPointClick(kpd.marker);
+    }
+  };
 
   let inactivePeriods: {
     name: string;
@@ -287,6 +437,11 @@
   };
 
   onMount(() => {
+    if (showTimeRangeSelector) {
+      document.addEventListener('mousemove', onRangeMouseMove);
+      document.addEventListener('mouseup', onRangeMouseUp);
+      setTimeout(() => emitTimeRangeChange(), 0);
+    }
     playerState = replayer.service.state.value;
     speedState = replayer.speedService.state.value;
     replayer.on(
@@ -331,6 +486,11 @@
   });
 
   onDestroy(() => {
+    if (rangeEmitTimer !== null) clearTimeout(rangeEmitTimer);
+    if (showTimeRangeSelector) {
+      document.removeEventListener('mousemove', onRangeMouseMove);
+      document.removeEventListener('mouseup', onRangeMouseUp);
+    }
     replayer.pause();
     stopTimer();
   });
@@ -339,13 +499,15 @@
 <style>
   .rr-controller {
     width: 100%;
-    height: 80px;
+    min-height: 80px;
     background: #fff;
     display: flex;
     flex-direction: column;
     justify-content: space-around;
     align-items: center;
     border-radius: 0 0 5px 5px;
+    gap: 8px;
+    padding: 8px 0;
   }
 
   .rr-timeline {
@@ -354,10 +516,36 @@
     align-items: center;
   }
 
+  .rr-timeline--range {
+    margin-top: 0;
+  }
+
+  .rr-timeline__label {
+    width: 150px;
+    text-align: center;
+    color: #666;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .rr-timerange-bar {
+    flex: 1;
+    height: 10px;
+    background: #eee;
+    position: relative;
+    border-radius: 3px;
+    box-sizing: border-box;
+  }
+
   .rr-timeline__time {
     display: inline-block;
-    width: 100px;
+    width: 150px;
     text-align: center;
+    color: #11103e;
+    font-size: 12px;
+  }
+
+  .rr-timeline__time--range {
     color: #11103e;
   }
 
@@ -402,6 +590,14 @@
     font-size: 13px;
   }
 
+  .rr-controller__progress-text {
+    margin-right: 12px;
+    font-size: 12px;
+    color: #11103e;
+    min-width: 90px;
+    text-align: center;
+  }
+
   .rr-controller__btns button {
     width: 32px;
     height: 32px;
@@ -427,15 +623,95 @@
   .rr-controller__btns button:disabled {
     cursor: not-allowed;
   }
+
+  .rr-keypoint {
+    position: absolute;
+    top: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    z-index: 1;
+    pointer-events: auto;
+  }
+
+  .rr-keypoint__bar {
+    display: block;
+    width: 2px;
+    height: 10px;
+    background: var(--kp-color, #F44336);
+    border-radius: 1px;
+    transform: translateY(-50%);
+    transition: height 0.15s ease, width 0.15s ease, opacity 0.15s ease;
+    opacity: 0.75;
+  }
+
+  .rr-keypoint--hovered .rr-keypoint__bar {
+    width: 3px;
+    height: 14px;
+    opacity: 1;
+  }
+
+  .rr-keypoint__icon {
+    position: absolute;
+    bottom: 100%;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    font-size: 10px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+  }
+
+  .rr-keypoint--hovered .rr-keypoint__icon {
+    opacity: 1;
+  }
+
+  .rr-timerange__highlight {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: rgba(73, 80, 246, 0.25);
+    pointer-events: none;
+    border-radius: 2px;
+  }
+
+  .rr-timerange__handle {
+    position: absolute;
+    top: 50%;
+    width: 8px;
+    height: 14px;
+    margin-top: -7px;
+    transform: translateX(-50%);
+    background: rgb(73, 80, 246);
+    border-radius: 2px;
+    cursor: ew-resize;
+    pointer-events: auto;
+  }
+
+  .rr-timerange__handle:hover {
+    background: rgb(53, 60, 226);
+  }
 </style>
 
 {#if showController}
   <div class="rr-controller">
     <div class="rr-timeline">
-      <span class="rr-timeline__time">{formatTime(currentTime)}</span>
+      <span class="rr-timeline__time">{formatDateTime(actualStartTime)}</span>
       <div
         class="rr-progress"
         class:disabled={speedState === 'skipping'}
+        role="progressbar"
+        aria-valuenow={currentTime}
+        aria-valuemin={0}
+        aria-valuemax={meta.totalTime}
+        aria-label="Playback position"
         bind:this={progress}
         on:click={handleProgressClick}
         on:keydown={handleProgressKeydown}
@@ -460,11 +736,69 @@
           />
         {/each}
 
+        {#each keyPointMarkers as kpd}
+          <!-- svelte-ignore a11y-click-events-have-key-events -->
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <div
+            class="rr-keypoint"
+            class:rr-keypoint--hovered={hoveredKeyPoint === kpd}
+            style="left: {kpd.position}; --kp-color: {kpd.color};"
+            title={kpd.tooltip}
+            on:mouseenter={() => (hoveredKeyPoint = kpd)}
+            on:mouseleave={() => (hoveredKeyPoint = null)}
+            on:click={(e) => handleKeyPointClick(kpd, e)}
+          >
+            {#if kpd.icon}
+              <span class="rr-keypoint__icon">{@html kpd.icon}</span>
+            {/if}
+            <span class="rr-keypoint__bar" />
+          </div>
+        {/each}
+
         <div class="rr-progress__handler" style="left: {percentage}" />
       </div>
-      <span class="rr-timeline__time">{formatTime(meta.totalTime)}</span>
+      <span class="rr-timeline__time">{formatDateTime(actualEndTime)}</span>
     </div>
+
+    {#if showTimeRangeSelector}
+      <div class="rr-timeline rr-timeline--range">
+        <span class="rr-timeline__label">范围</span>
+        <div
+          class="rr-timerange-bar"
+          bind:this={rangeBar}
+          role="group"
+          aria-label="Time range selection"
+        >
+          <div
+            class="rr-timerange__highlight"
+            style="left: {(rangeStartPercent * 100)}%; width: {((rangeEndPercent - rangeStartPercent) * 100)}%"
+          />
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <div
+            class="rr-timerange__handle rr-timerange__handle--left"
+            style="left: {(rangeStartPercent * 100)}%"
+            on:mousedown|preventDefault={(e) => onRangeHandleMouseDown('left', e)}
+            role="button"
+            tabindex="0"
+            title="拖动设置范围起点"
+          />
+          <!-- svelte-ignore a11y-no-static-element-interactions -->
+          <div
+            class="rr-timerange__handle rr-timerange__handle--right"
+            style="left: {(rangeEndPercent * 100)}%"
+            on:mousedown|preventDefault={(e) => onRangeHandleMouseDown('right', e)}
+            role="button"
+            tabindex="0"
+            title="拖动设置范围终点"
+          />
+        </div>
+        <span class="rr-timeline__time rr-timeline__time--range">{rangeTimeText}</span>
+      </div>
+    {/if}
     <div class="rr-controller__btns">
+      <span class="rr-controller__progress-text">
+        {formatDateTime(actualStartTime + currentTime)} / {formatDateTime(actualEndTime)}
+      </span>
       <button on:click={toggle}>
         {#if playerState === 'playing'}
           <svg

@@ -166,6 +166,22 @@ function isUserInteraction(event: eventWithTime): boolean {
 }
 
 /**
+ * Format timestamp to YYYY/MM/DD HH:mm:ss
+ * @param timestamp - timestamp in milliseconds
+ * @returns formatted date time string
+ */
+export function formatDateTime(timestamp: number): string {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = padZero(date.getMonth() + 1);
+  const day = padZero(date.getDate());
+  const hour = padZero(date.getHours());
+  const minute = padZero(date.getMinutes());
+  const second = padZero(date.getSeconds());
+  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+}
+
+/**
  * Get periods of time when no user interaction happened from a list of events.
  * @param events - all events
  * @param inactivePeriodThreshold - threshold of inactive time in milliseconds

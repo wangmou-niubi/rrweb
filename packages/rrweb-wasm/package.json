@@ -1,0 +1,47 @@
+{
+  "name": "@rrweb/wasm",
+  "version": "2.0.0-alpha.20",
+  "description": "Rust/WebAssembly optimizations for rrweb (base64, etc.)",
+  "type": "module",
+  "main": "./dist/rrweb-wasm.js",
+  "module": "./dist/rrweb-wasm.js",
+  "types": "./dist/rrweb-wasm.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/rrweb-wasm.d.ts",
+        "default": "./dist/rrweb-wasm.js"
+      },
+      "require": {
+        "types": "./dist/rrweb-wasm.d.cts",
+        "default": "./dist/rrweb-wasm.cjs"
+      }
+    },
+    "./wasm": "./pkg/rrweb_wasm.js"
+  },
+  "files": [
+    "pkg",
+    "dist",
+    "package.json"
+  ],
+  "scripts": {
+    "build:wasm": "wasm-pack build --target bundler --out-dir pkg",
+    "build": "yarn build:wasm && vite build",
+    "prepublish": "yarn build"
+  },
+  "devDependencies": {
+    "vite": "^6.0.1",
+    "vite-plugin-dts": "^3.9.1",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "base64-arraybuffer": "^1.0.1"
+  },
+  "peerDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rrweb-io/rrweb.git"
+  },
+  "license": "MIT",
+  "keywords": ["rrweb", "wasm", "webassembly", "base64"]
+}

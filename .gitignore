@@ -11,6 +11,12 @@ temp
 
 .env
 
+compare
+
+.history
+
+.specstory
+
 .DS_Store
 
 # output of `yarn build`

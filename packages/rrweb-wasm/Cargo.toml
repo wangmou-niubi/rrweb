@@ -1,0 +1,17 @@
+[package]
+name = "rrweb-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "Rust/WebAssembly optimizations for rrweb"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+
+[dependencies]
+wasm-bindgen = "0.2"
+base64 = "0.22"
+getrandom = { version = "0.2", features = ["js"] }

@@ -1,4 +1,4 @@
-import { encode } from 'base64-arraybuffer';
+import { encode } from '@rrweb/wasm';
 import type { IWindow, CanvasArg } from '@rrweb/types';
 
 // TODO: unify with `replay/webgl.ts`

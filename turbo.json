@@ -15,6 +15,7 @@
         "lib/**",
         "es/**",
         "dist/**",
+        "pkg/**",
         "typings/**",
         ".svelte-kit/**",
         "types/**"

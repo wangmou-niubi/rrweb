@@ -120,6 +120,37 @@ async function buildFile({
       }),
     ],
   });
+  
+  // Post-process UMD file to expose default export directly
+  if (!isCss && name) {
+    const fs = await import('fs');
+    let content = fs.readFileSync(output, 'utf-8');
+    
+    // Replace the final return statement to unwrap default export
+    // This ensures that when using UMD (e.g., via <script> tag),
+    // the global variable is the constructor itself, not an object with a default property
+    content = content.replace(
+      /return module\.exports;\s*}\)\)/,
+      `// Unwrap default export for easier usage in UMD/browser environments
+// When module.exports has a 'default' property, we want to return that as the main export
+// while preserving other named exports as properties on it
+if (module.exports && module.exports.default) {
+  var _default = module.exports.default;
+  // Copy named exports to the default export
+  for (var key in module.exports) {
+    if (key !== 'default' && key !== '__esModule') {
+      _default[key] = module.exports[key];
+    }
+  }
+  return _default;
+}
+return module.exports;
+}))`
+    );
+    
+    fs.writeFileSync(output, content, 'utf-8');
+  }
+  
   const filename = output.replace(new RegExp(`^.+/(${outDir}/)`), '$1');
   console.log(filename);
   console.log(`${filename}.map`);

@@ -12,7 +12,7 @@
     typeOf,
   } from './utils';
   import Controller from './Controller.svelte';
-  import type { RRwebPlayerOptions, RRwebPlayerExpose } from './types';
+  import type { RRwebPlayerOptions, RRwebPlayerExpose, KeyPointMarker, TimeRange } from './types';
     
   export let width: NonNullable<RRwebPlayerOptions['props']['width']>  = 1024;
   export let height: NonNullable<RRwebPlayerOptions['props']['height']> = 576;
@@ -26,6 +26,14 @@
   export let tags: NonNullable<RRwebPlayerOptions['props']['tags']> = {};
   // color of inactive periods indicator
   export let inactiveColor: NonNullable<RRwebPlayerOptions['props']['inactiveColor']> = '#D4D4D4';
+  export let startTime: RRwebPlayerOptions['props']['startTime'] = undefined;
+  export let endTime: RRwebPlayerOptions['props']['endTime'] = undefined;
+  export let keyPoints: NonNullable<RRwebPlayerOptions['props']['keyPoints']> = [];
+  export let keyPointStyles: NonNullable<RRwebPlayerOptions['props']['keyPointStyles']> = {};
+  export let onKeyPointClick: RRwebPlayerOptions['props']['onKeyPointClick'] = undefined;
+  export let showTimeRangeSelector: NonNullable<RRwebPlayerOptions['props']['showTimeRangeSelector']> = true;
+  export let timeRange: RRwebPlayerOptions['props']['timeRange'] = undefined;
+  export let onTimeRangeChange: RRwebPlayerOptions['props']['onTimeRangeChange'] = undefined;
 
   let replayer: Replayer;
 
@@ -234,6 +242,14 @@
       {skipInactive}
       {tags}
       {inactiveColor}
+      {startTime}
+      {endTime}
+      {keyPoints}
+      {keyPointStyles}
+      {onKeyPointClick}
+      showTimeRangeSelector={showTimeRangeSelector}
+      timeRange={timeRange}
+      onTimeRangeChange={onTimeRangeChange}
       on:fullscreen={() => toggleFullscreen()}
     />
   {/if}

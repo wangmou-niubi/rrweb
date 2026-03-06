@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test UMD Export</title>
+  <link rel="stylesheet" href="packages/rrweb-player/dist/style.css">
+</head>
+<body>
+  <h1>Testing rrwebPlayer UMD Export</h1>
+  <div id="result"></div>
+  
+  <script src="packages/rrweb-player/umd/rrweb-player.js"></script>
+  <script>
+    const resultDiv = document.getElementById('result');
+    
+    // Test 1: Check if rrwebPlayer is defined
+    if (typeof rrwebPlayer === 'undefined') {
+      resultDiv.innerHTML += '<p style="color: red;">❌ rrwebPlayer is not defined</p>';
+    } else {
+      resultDiv.innerHTML += '<p style="color: green;">✓ rrwebPlayer is defined</p>';
+    }
+    
+    // Test 2: Check if rrwebPlayer is a function (constructor)
+    if (typeof rrwebPlayer === 'function') {
+      resultDiv.innerHTML += '<p style="color: green;">✓ rrwebPlayer is a function (constructor)</p>';
+    } else {
+      resultDiv.innerHTML += '<p style="color: red;">❌ rrwebPlayer is not a function, it is: ' + typeof rrwebPlayer + '</p>';
+    }
+    
+    // Test 3: Check if rrwebPlayer has Player property
+    if (rrwebPlayer.Player) {
+      resultDiv.innerHTML += '<p style="color: green;">✓ rrwebPlayer.Player exists (named export)</p>';
+    } else {
+      resultDiv.innerHTML += '<p style="color: orange;">⚠ rrwebPlayer.Player does not exist</p>';
+    }
+    
+    // Test 4: Try to instantiate
+    try {
+      const player = new rrwebPlayer({
+        target: document.createElement('div'),
+        props: {
+          events: []
+        }
+      });
+      resultDiv.innerHTML += '<p style="color: green;">✓ Successfully created instance with "new rrwebPlayer()"</p>';
+      
+      // Check if instance has expected methods
+      if (typeof player.play === 'function') {
+        resultDiv.innerHTML += '<p style="color: green;">✓ Instance has play() method</p>';
+      }
+      if (typeof player.pause === 'function') {
+        resultDiv.innerHTML += '<p style="color: green;">✓ Instance has pause() method</p>';
+      }
+    } catch (error) {
+      resultDiv.innerHTML += '<p style="color: red;">❌ Failed to create instance: ' + error.message + '</p>';
+    }
+    
+    // Test 5: Check constructor name
+    if (rrwebPlayer.name) {
+      resultDiv.innerHTML += '<p style="color: blue;">ℹ Constructor name: ' + rrwebPlayer.name + '</p>';
+    }
+  </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { decode } from 'base64-arraybuffer';
+import { decode } from '@rrweb/wasm';
 import type { Replayer } from '../';
 import type { CanvasArg, SerializedCanvasArg } from '@rrweb/types';
 
